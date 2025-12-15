@@ -5,7 +5,7 @@ Password Manager Web - Interface Web Complète
 
 import os
 import sys
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for, flash
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for, flash, send_file
 from flask_session import Session
 import sqlite3
 import hashlib
@@ -18,6 +18,7 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 import requests
 import random
 import string
+import io
 
 # ==================== CONFIGURATION ====================
 
@@ -577,6 +578,181 @@ def settings():
     
     return render_template('settings.html')
 
+@app.route('/export-backup', methods=['GET'])
+def export_backup():
+    """Exporte une sauvegarde chiffrée."""
+    if 'user_id' not in session:
+        flash('Veuillez vous connecter.', 'warning')
+        return redirect(url_for('login'))
+    
+    try:
+        manager = PasswordManager()
+        
+        # Récupère les mots de passe
+        passwords = manager.get_passwords(
+            session['user_id'], 
+            session.get('master_password', '')
+        )
+        
+        if not passwords:
+            flash('Aucun mot de passe à exporter.', 'info')
+            return redirect(url_for('settings'))
+        
+        # Crée les données de sauvegarde
+        backup_data = {
+            'metadata': {
+                'export_date': datetime.now().isoformat(),
+                'username': session.get('username'),
+                'user_id': session['user_id'],
+                'total_passwords': len(passwords),
+                'version': '1.0',
+                'app': 'Password Manager Web'
+            },
+            'passwords': passwords
+        }
+        
+        # Convertit en JSON
+        json_data = json.dumps(backup_data, indent=2, ensure_ascii=False)
+        
+        # Chiffre avec le mot de passe maître
+        master_password = session.get('master_password', '')
+        
+        # Utilise un chiffrement simple (XOR avec hash du mot de passe)
+        key = hashlib.sha256(master_password.encode()).digest()
+        
+        # Chiffrement XOR
+        encrypted = bytearray()
+        for i, char in enumerate(json_data.encode()):
+            encrypted.append(char ^ key[i % len(key)])
+        
+        # Ajoute un header pour identification
+        header = b'PMBACKUPv1.0'
+        final_data = header + bytes(encrypted)
+        
+        # Crée un nom de fichier
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        username = session.get('username', 'user').replace(' ', '_')
+        filename = f'password_backup_{username}_{timestamp}.pmbackup'
+        
+        # Retourne le fichier
+        return send_file(
+            io.BytesIO(final_data),
+            as_attachment=True,
+            download_name=filename,
+            mimetype='application/octet-stream'
+        )
+        
+    except Exception as e:
+        flash(f'Erreur lors de l\'export : {str(e)}', 'danger')
+        return redirect(url_for('settings'))
+
+@app.route('/import-backup', methods=['POST'])
+def import_backup():
+    """Importe une sauvegarde."""
+    if 'user_id' not in session:
+        flash('Veuillez vous connecter.', 'warning')
+        return redirect(url_for('login'))
+    
+    if 'backup_file' not in request.files:
+        flash('Aucun fichier sélectionné.', 'danger')
+        return redirect(url_for('settings'))
+    
+    file = request.files['backup_file']
+    backup_password = request.form.get('backup_password')
+    
+    if not file or file.filename == '':
+        flash('Aucun fichier sélectionné.', 'danger')
+        return redirect(url_for('settings'))
+    
+    if not backup_password:
+        flash('Mot de passe requis.', 'danger')
+        return redirect(url_for('settings'))
+    
+    try:
+        # Lit le fichier
+        file_data = file.read()
+        
+        # Vérifie le header
+        if not file_data.startswith(b'PMBACKUPv1.0'):
+            flash('Format de fichier invalide.', 'danger')
+            return redirect(url_for('settings'))
+        
+        # Enlève le header
+        encrypted_data = file_data[12:]  # 12 = len('PMBACKUPv1.0')
+        
+        # Déchiffre
+        key = hashlib.sha256(backup_password.encode()).digest()
+        
+        # Déchiffrement XOR
+        decrypted = bytearray()
+        for i, char in enumerate(encrypted_data):
+            decrypted.append(char ^ key[i % len(key)])
+        
+        # Convertit en JSON
+        backup_data = json.loads(decrypted.decode())
+        
+        # Vérifie la structure
+        if 'passwords' not in backup_data:
+            flash('Format de fichier invalide.', 'danger')
+            return redirect(url_for('settings'))
+        
+        # Importe les mots de passe
+        manager = PasswordManager()
+        imported_count = 0
+        skipped_count = 0
+        
+        for pwd_data in backup_data['passwords']:
+            # Vérifie les champs requis
+            if all(field in pwd_data for field in ['service', 'username', 'password']):
+                try:
+                    # Vérifie si le mot de passe existe déjà
+                    existing_passwords = manager.get_passwords(
+                        session['user_id'], 
+                        session.get('master_password', '')
+                    )
+                    
+                    # Vérifie les doublons
+                    is_duplicate = any(
+                        p['service'] == pwd_data['service'] and 
+                        p['username'] == pwd_data['username']
+                        for p in existing_passwords
+                    )
+                    
+                    if not is_duplicate:
+                        pid = manager.add_password(
+                            session['user_id'],
+                            session.get('master_password', ''),
+                            pwd_data['service'],
+                            pwd_data['username'],
+                            pwd_data['password'],
+                            pwd_data.get('url', ''),
+                            pwd_data.get('category', 'Autre'),
+                            pwd_data.get('notes', '')
+                        )
+                        if pid:
+                            imported_count += 1
+                        else:
+                            skipped_count += 1
+                    else:
+                        skipped_count += 1
+                except Exception as e:
+                    print(f"Erreur import: {e}")
+                    skipped_count += 1
+        
+        if imported_count > 0:
+            flash(f'{imported_count} mots de passe importés avec succès ! ({skipped_count} ignorés)', 'success')
+        else:
+            flash('Aucun nouveau mot de passe importé.', 'info')
+        
+        return redirect(url_for('view_passwords'))
+        
+    except json.JSONDecodeError:
+        flash('Fichier corrompu ou mot de passe incorrect.', 'danger')
+    except Exception as e:
+        flash(f'Erreur lors de l\'import : {str(e)}', 'danger')
+    
+    return redirect(url_for('settings'))
+
 @app.route('/logout')
 def logout():
     """Déconnexion."""
@@ -603,12 +779,18 @@ if __name__ == '__main__':
     
     # Vérifier les templates
     print("\n🔍 Vérification des templates:")
-    for template in ['index.html', 'base.html', 'login.html', 'register.html']:
+    essential_templates = ['index.html', 'base.html', 'login.html', 'register.html', 
+                          'dashboard.html', 'settings.html', 'generator.html']
+    
+    for template in essential_templates:
         path = os.path.join(TEMPLATE_DIR, template)
         if os.path.exists(path):
             print(f"  ✅ {template} - OK")
         else:
-            print(f"  ❌ {template} - MANQUANT")
+            print(f"  ⚠️  {template} - MANQUANT (créer un fichier vide)")
+            # Crée un fichier vide si manquant
+            with open(path, 'w') as f:
+                f.write("<!-- Template {} -->".format(template))
     
     # Initialiser la base de données
     manager = PasswordManager()

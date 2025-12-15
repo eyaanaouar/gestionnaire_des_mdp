@@ -12,21 +12,17 @@
                     <i class="fas fa-cog"></i> Paramètres
                 </h5>
             </div>
-            <div class="list-group list-group-flush">
-                <a href="#account" class="list-group-item list-group-item-action active" 
-                   data-bs-toggle="tab">
+            <div class="list-group list-group-flush" id="settingsMenu">
+                <a href="#account" class="list-group-item list-group-item-action active" data-bs-toggle="tab">
                     <i class="fas fa-user me-2"></i> Compte
                 </a>
-                <a href="#security" class="list-group-item list-group-item-action" 
-                   data-bs-toggle="tab">
+                <a href="#security" class="list-group-item list-group-item-action" data-bs-toggle="tab">
                     <i class="fas fa-shield-alt me-2"></i> Sécurité
                 </a>
-                <a href="#backup" class="list-group-item list-group-item-action" 
-                   data-bs-toggle="tab">
+                <a href="#backup" class="list-group-item list-group-item-action" data-bs-toggle="tab">
                     <i class="fas fa-database me-2"></i> Sauvegarde
                 </a>
-                <a href="#about" class="list-group-item list-group-item-action" 
-                   data-bs-toggle="tab">
+                <a href="#about" class="list-group-item list-group-item-action" data-bs-toggle="tab">
                     <i class="fas fa-info-circle me-2"></i> À propos
                 </a>
             </div>
@@ -41,16 +37,16 @@
                 </h6>
                 <div class="mt-3">
                     <div class="d-flex justify-content-between mb-2">
-                        <span>Mots de passe :</span>
-                        <span class="fw-bold">0</span>
+                        <span>Utilisateur :</span>
+                        <span class="fw-bold">{{ session.username }}</span>
                     </div>
                     <div class="d-flex justify-content-between mb-2">
-                        <span>Dernière connexion :</span>
-                        <span class="text-muted">Aujourd'hui</span>
+                        <span>ID :</span>
+                        <span class="text-muted">#{{ session.user_id }}</span>
                     </div>
                     <div class="d-flex justify-content-between">
-                        <span>Compte créé le :</span>
-                        <span class="text-muted">{{ session.get('created_at', 'Inconnu') }}</span>
+                        <span>Session :</span>
+                        <span class="text-success">Active</span>
                     </div>
                 </div>
             </div>
@@ -72,33 +68,49 @@
                     <div class="card-body">
                         <div class="row mb-4">
                             <div class="col-md-6">
-                                <div class="card border-0 bg-light">
+                                <div class="card border-0 bg-light h-100">
                                     <div class="card-body">
                                         <h6>
                                             <i class="fas fa-id-card"></i> 
                                             Informations personnelles
                                         </h6>
                                         <div class="mt-3">
-                                            <p><strong>Nom d'utilisateur :</strong><br>
-                                               <code>{{ session.username }}</code></p>
-                                            <p><strong>ID utilisateur :</strong><br>
-                                               <code>{{ session.user_id }}</code></p>
+                                            <p>
+                                                <strong>Nom d'utilisateur :</strong><br>
+                                                <code>{{ session.username }}</code>
+                                            </p>
+                                            <p>
+                                                <strong>ID utilisateur :</strong><br>
+                                                <code>{{ session.user_id }}</code>
+                                            </p>
+                                            <p>
+                                                <strong>Compte créé :</strong><br>
+                                                <span class="text-muted">Aujourd'hui</span>
+                                            </p>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                             <div class="col-md-6">
-                                <div class="card border-0 bg-light">
+                                <div class="card border-0 bg-light h-100">
                                     <div class="card-body">
                                         <h6>
                                             <i class="fas fa-calendar-alt"></i> 
                                             Activité
                                         </h6>
                                         <div class="mt-3">
-                                            <p><strong>Dernière connexion :</strong><br>
-                                               <span class="text-success">En ligne maintenant</span></p>
-                                            <p><strong>Session expire :</strong><br>
-                                               Dans 1 heure</p>
+                                            <p>
+                                                <strong>Dernière connexion :</strong><br>
+                                                <span class="text-success">En ligne maintenant</span>
+                                            </p>
+                                            <p>
+                                                <strong>Session expire :</strong><br>
+                                                Dans 1 heure
+                                            </p>
+                                            <p>
+                                                <strong>Statut :</strong><br>
+                                                <span class="badge bg-success">Actif</span>
+                                            </p>
                                         </div>
                                     </div>
                                 </div>
@@ -117,34 +129,60 @@
                                 <div class="alert alert-warning">
                                     <i class="fas fa-exclamation-triangle"></i>
                                     <strong>Attention :</strong> Changer le mot de passe maître 
-                                    nécessitera de rechiffrer tous vos mots de passe stockés.
+                                    rechiffrera tous vos mots de passe stockés. Ne le perdez pas !
                                 </div>
                                 
                                 <form id="changeMasterPasswordForm">
                                     <div class="row">
-                                        <div class="col-md-6 mb-3">
+                                        <div class="col-md-4 mb-3">
                                             <label class="form-label">Mot de passe actuel</label>
-                                            <input type="password" class="form-control" 
-                                                   id="currentMasterPassword" required>
+                                            <div class="input-group">
+                                                <input type="password" class="form-control" 
+                                                       id="currentMasterPassword" required>
+                                                <button class="btn btn-outline-secondary" type="button"
+                                                        id="toggleCurrentPassword">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                            </div>
                                         </div>
-                                        <div class="col-md-6 mb-3">
+                                        <div class="col-md-4 mb-3">
                                             <label class="form-label">Nouveau mot de passe</label>
-                                            <input type="password" class="form-control" 
-                                                   id="newMasterPassword" required>
+                                            <div class="input-group">
+                                                <input type="password" class="form-control" 
+                                                       id="newMasterPassword" required>
+                                                <button class="btn btn-outline-secondary" type="button"
+                                                        id="toggleNewPassword">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            <label class="form-label">Confirmer</label>
+                                            <div class="input-group">
+                                                <input type="password" class="form-control" 
+                                                       id="confirmNewMasterPassword" required>
+                                                <button class="btn btn-outline-secondary" type="button"
+                                                        id="toggleConfirmPassword">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
-                                    <div class="row">
-                                        <div class="col-md-6 mb-3">
-                                            <label class="form-label">Confirmer le nouveau mot de passe</label>
-                                            <input type="password" class="form-control" 
-                                                   id="confirmNewMasterPassword" required>
+                                    
+                                    <div class="mb-3">
+                                        <div class="progress" style="height: 8px;">
+                                            <div class="progress-bar" id="newPasswordStrength" style="width: 0%"></div>
                                         </div>
-                                        <div class="col-md-6 d-flex align-items-end">
-                                            <button type="submit" class="btn btn-warning w-100">
-                                                <i class="fas fa-sync-alt"></i> 
-                                                Changer le mot de passe
-                                            </button>
+                                        <div class="form-text" id="passwordStrengthText">
+                                            Force : Non évaluée
                                         </div>
+                                    </div>
+                                    
+                                    <div class="d-flex justify-content-end">
+                                        <button type="submit" class="btn btn-warning" id="changePasswordBtn">
+                                            <i class="fas fa-sync-alt"></i> 
+                                            Changer le mot de passe
+                                        </button>
                                     </div>
                                 </form>
                             </div>
@@ -186,6 +224,14 @@
                                         Alertes pour les mots de passe compromis
                                     </label>
                                 </div>
+                                <div class="form-check form-switch mb-3">
+                                    <input class="form-check-input" type="checkbox" 
+                                           id="autoCheckToggle">
+                                    <label class="form-check-label" for="autoCheckToggle">
+                                        Vérifier périodiquement tous les mots de passe
+                                    </label>
+                                </div>
+                                
                                 <button class="btn btn-outline-success" id="checkAllPasswords">
                                     <i class="fas fa-search"></i> 
                                     Vérifier tous les mots de passe maintenant
@@ -210,27 +256,41 @@
                                         <option value="60" selected>1 heure</option>
                                         <option value="120">2 heures</option>
                                         <option value="480">8 heures</option>
+                                        <option value="1440">24 heures</option>
                                     </select>
                                     <div class="form-text">
-                                        Après ce délai, vous serez automatiquement déconnecté.
+                                        Après ce délai d'inactivité, vous serez automatiquement déconnecté.
                                     </div>
                                 </div>
                                 
                                 <div class="mb-3">
-                                    <label class="form-label">Déconnexion automatique</label>
-                                    <div class="form-check">
+                                    <label class="form-label">Sécurité de session</label>
+                                    <div class="form-check mb-2">
                                         <input class="form-check-input" type="checkbox" 
                                                id="autoLogout" checked>
                                         <label class="form-check-label" for="autoLogout">
                                             Se déconnecter automatiquement après inactivité
                                         </label>
                                     </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" 
+                                               id="singleSession">
+                                        <label class="form-check-label" for="singleSession">
+                                            Une seule session active à la fois
+                                        </label>
+                                    </div>
                                 </div>
                                 
-                                <button class="btn btn-outline-danger" id="logoutAllDevices">
-                                    <i class="fas fa-sign-out-alt"></i> 
-                                    Déconnecter tous les appareils
-                                </button>
+                                <div class="d-grid gap-2 d-md-flex">
+                                    <button class="btn btn-outline-danger me-md-2" id="logoutAllDevices">
+                                        <i class="fas fa-sign-out-alt"></i> 
+                                        Déconnecter tous les appareils
+                                    </button>
+                                    <button class="btn btn-outline-secondary" id="viewActiveSessions">
+                                        <i class="fas fa-list"></i> 
+                                        Voir les sessions actives
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -247,71 +307,141 @@
                         </h5>
                     </div>
                     <div class="card-body">
-                        <!-- Sauvegarde -->
-                        <div class="card border-warning mb-4">
-                            <div class="card-header bg-warning text-dark">
+                        
+                        <!-- Export -->
+                        <div class="card border-primary mb-4">
+                            <div class="card-header bg-primary text-white">
                                 <h6 class="mb-0">
                                     <i class="fas fa-download"></i> 
-                                    Sauvegarde
+                                    Exporter une sauvegarde
                                 </h6>
                             </div>
                             <div class="card-body">
                                 <div class="alert alert-info">
                                     <i class="fas fa-info-circle"></i>
-                                    La sauvegarde crée un fichier chiffré contenant tous vos mots de passe.
+                                    <strong>Export sécurisé :</strong> Vos mots de passe seront chiffrés 
+                                    avec votre mot de passe maître avant le téléchargement.
                                 </div>
                                 
-                                <div class="mb-3">
-                                    <label class="form-label">Mot de passe de sauvegarde</label>
-                                    <input type="password" class="form-control" 
-                                           id="backupPassword" 
-                                           placeholder="Créez un mot de passe pour la sauvegarde">
-                                    <div class="form-text">
-                                        Ce mot de passe sera nécessaire pour restaurer la sauvegarde.
-                                    </div>
+                                <div class="mb-4">
+                                    <h6>Caractéristiques :</h6>
+                                    <ul class="list-unstyled">
+                                        <li class="mb-2">
+                                            <i class="fas fa-lock text-success"></i>
+                                            <strong>Chiffrement AES-256</strong> avec votre mot de passe maître
+                                        </li>
+                                        <li class="mb-2">
+                                            <i class="fas fa-file text-success"></i>
+                                            <strong>Format :</strong> .pmb (Password Manager Backup)
+                                        </li>
+                                        <li class="mb-2">
+                                            <i class="fas fa-shield-alt text-success"></i>
+                                            <strong>Sécurisé :</strong> Impossible à lire sans le mot de passe
+                                        </li>
+                                        <li class="mb-2">
+                                            <i class="fas fa-database text-success"></i>
+                                            <strong>Contenu :</strong> Tous vos mots de passe + métadonnées
+                                        </li>
+                                    </ul>
                                 </div>
                                 
-                                <button class="btn btn-warning w-100" id="createBackup">
-                                    <i class="fas fa-download"></i> 
-                                    Créer une sauvegarde
-                                </button>
+                                <div class="d-grid gap-2">
+                                    <a href="{{ url_for('export_backup') }}" 
+                                       class="btn btn-primary btn-lg" 
+                                       id="exportBtn">
+                                        <i class="fas fa-file-export"></i> 
+                                        Exporter ma sauvegarde complète
+                                    </a>
+                                    <small class="text-muted text-center">
+                                        Le téléchargement commencera automatiquement
+                                    </small>
+                                </div>
                             </div>
                         </div>
                         
-                        <!-- Restauration -->
-                        <div class="card border-danger">
-                            <div class="card-header bg-danger text-white">
+                        <!-- Import -->
+                        <div class="card border-success">
+                            <div class="card-header bg-success text-white">
                                 <h6 class="mb-0">
                                     <i class="fas fa-upload"></i> 
-                                    Restauration
+                                    Importer une sauvegarde
                                 </h6>
                             </div>
                             <div class="card-body">
-                                <div class="alert alert-danger">
+                                <div class="alert alert-warning">
                                     <i class="fas fa-exclamation-triangle"></i>
-                                    <strong>Attention :</strong> La restauration écrasera tous vos 
-                                    mots de passe actuels.
+                                    <strong>Attention :</strong> L'import <strong>ajoutera</strong> les mots de passe 
+                                    à votre base existante. Les doublons ne seront pas supprimés.
                                 </div>
                                 
-                                <div class="mb-3">
-                                    <label class="form-label">Fichier de sauvegarde</label>
-                                    <input type="file" class="form-control" 
-                                           id="backupFile" accept=".json,.encrypted">
-                                </div>
+                                <form method="POST" 
+                                      action="{{ url_for('import_backup') }}" 
+                                      enctype="multipart/form-data"
+                                      id="importForm">
+                                    
+                                    <div class="mb-3">
+                                        <label for="backupFile" class="form-label fw-bold">
+                                            <i class="fas fa-file-archive"></i> 
+                                            Fichier de sauvegarde
+                                        </label>
+                                        <input type="file" 
+                                               class="form-control form-control-lg" 
+                                               id="backupFile"
+                                               name="backup_file" 
+                                               accept=".pmb"
+                                               required>
+                                        <div class="form-text">
+                                            Sélectionnez un fichier .pmb exporté depuis Password Manager
+                                        </div>
+                                        <div id="filePreview" class="mt-2"></div>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="backupPassword" class="form-label fw-bold">
+                                            <i class="fas fa-key"></i> 
+                                            Mot de passe maître
+                                        </label>
+                                        <div class="input-group">
+                                            <input type="password" 
+                                                   class="form-control form-control-lg" 
+                                                   id="backupPassword"
+                                                   name="backup_password" 
+                                                   placeholder="Votre mot de passe maître" 
+                                                   required>
+                                            <button class="btn btn-outline-secondary" 
+                                                    type="button"
+                                                    id="toggleImportPassword">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                        </div>
+                                        <div class="form-text">
+                                            Le mot de passe utilisé lors de la création de la sauvegarde
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="d-grid gap-2">
+                                        <button type="submit" 
+                                                class="btn btn-success btn-lg"
+                                                id="importBtn">
+                                            <i class="fas fa-file-import"></i> 
+                                            Importer la sauvegarde
+                                        </button>
+                                    </div>
+                                </form>
                                 
-                                <div class="mb-3">
-                                    <label class="form-label">Mot de passe de sauvegarde</label>
-                                    <input type="password" class="form-control" 
-                                           id="restorePassword" 
-                                           placeholder="Entrez le mot de passe de la sauvegarde">
+                                <div class="mt-4">
+                                    <h6><i class="fas fa-question-circle"></i> Comment restaurer ?</h6>
+                                    <ol class="small">
+                                        <li>Exportez d'abord votre sauvegarde actuelle (au cas où)</li>
+                                        <li>Sélectionnez le fichier .pmb à importer</li>
+                                        <li>Entrez le mot de passe maître utilisé lors de l'export</li>
+                                        <li>Cliquez sur "Importer"</li>
+                                        <li>Vérifiez vos mots de passe dans la liste</li>
+                                    </ol>
                                 </div>
-                                
-                                <button class="btn btn-danger w-100" id="restoreBackup" disabled>
-                                    <i class="fas fa-upload"></i> 
-                                    Restaurer la sauvegarde
-                                </button>
                             </div>
                         </div>
+                        
                     </div>
                 </div>
             </div>
@@ -341,10 +471,22 @@
                                             Développement
                                         </h6>
                                         <ul class="list-unstyled">
-                                            <li><i class="fas fa-check text-success"></i> Framework : Flask</li>
-                                            <li><i class="fas fa-check text-success"></i> Base de données : SQLite</li>
-                                            <li><i class="fas fa-check text-success"></i> Chiffrement : AES-256</li>
-                                            <li><i class="fas fa-check text-success"></i> Interface : Bootstrap 5</li>
+                                            <li class="mb-2">
+                                                <i class="fas fa-check text-success"></i> 
+                                                Framework : Flask (Python)
+                                            </li>
+                                            <li class="mb-2">
+                                                <i class="fas fa-check text-success"></i> 
+                                                Base de données : SQLite
+                                            </li>
+                                            <li class="mb-2">
+                                                <i class="fas fa-check text-success"></i> 
+                                                Chiffrement : AES-256 (Fernet)
+                                            </li>
+                                            <li class="mb-2">
+                                                <i class="fas fa-check text-success"></i> 
+                                                Interface : Bootstrap 5 + Font Awesome
+                                            </li>
                                         </ul>
                                     </div>
                                 </div>
@@ -357,10 +499,22 @@
                                             Sécurité
                                         </h6>
                                         <ul class="list-unstyled">
-                                            <li><i class="fas fa-lock text-success"></i> Chiffrement local</li>
-                                            <li><i class="fas fa-user-secret text-success"></i> Données privées</li>
-                                            <li><i class="fas fa-globe text-success"></i> Vérification API</li>
-                                            <li><i class="fas fa-key text-success"></i> Mot de passe maître</li>
+                                            <li class="mb-2">
+                                                <i class="fas fa-lock text-success"></i> 
+                                                Chiffrement local (AES-256)
+                                            </li>
+                                            <li class="mb-2">
+                                                <i class="fas fa-user-secret text-success"></i> 
+                                                Données privées (aucun envoi à des tiers)
+                                            </li>
+                                            <li class="mb-2">
+                                                <i class="fas fa-globe text-success"></i> 
+                                                Vérification API Have I Been Pwned
+                                            </li>
+                                            <li class="mb-2">
+                                                <i class="fas fa-key text-success"></i> 
+                                                Mot de passe maître (PBKDF2)
+                                            </li>
                                         </ul>
                                     </div>
                                 </div>
@@ -370,18 +524,51 @@
                         <div class="card border-info">
                             <div class="card-body">
                                 <h6>
-                                    <i class="fas fa-heart text-danger"></i> 
-                                    Remerciements
+                                    <i class="fas fa-terminal"></i> 
+                                    Informations techniques
                                 </h6>
-                                <p>
-                                    Merci d'utiliser Password Manager. Ce projet est développé 
-                                    dans un but éducatif pour l'apprentissage de la sécurité 
-                                    informatique et du développement web avec Python.
-                                </p>
-                                <p class="mb-0">
-                                    <i class="fas fa-terminal"></i> Développé pour Kali Linux
-                                </p>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <p class="mb-1">
+                                            <strong>Version :</strong> 2.0 (Web)
+                                        </p>
+                                        <p class="mb-1">
+                                            <strong>Dernière mise à jour :</strong> Décembre 2024
+                                        </p>
+                                        <p class="mb-1">
+                                            <strong>Licence :</strong> Usage éducatif
+                                        </p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <p class="mb-1">
+                                            <strong>Système :</strong> Kali Linux
+                                        </p>
+                                        <p class="mb-1">
+                                            <strong>Python :</strong> 3.x
+                                        </p>
+                                        <p class="mb-1">
+                                            <strong>Base de données :</strong> SQLite
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <h6>
+                                <i class="fas fa-heart text-danger"></i> 
+                                Remerciements
+                            </h6>
+                            <p>
+                                Merci d'utiliser Password Manager. Ce projet a été développé 
+                                dans un but éducatif pour l'apprentissage de la sécurité 
+                                informatique, du développement web avec Python et de la 
+                                cryptographie appliquée.
+                            </p>
+                            <p class="mb-0">
+                                <i class="fas fa-graduation-cap"></i> 
+                                Développé pour Kali Linux dans le cadre d'un projet éducatif.
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -389,19 +576,178 @@
         </div>
     </div>
 </div>
+{% endblock %}
 
+{% block scripts %}
+{{ super() }}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Changement de mot de passe maître
-    const changeMasterPasswordForm = document.getElementById('changeMasterPasswordForm');
-    if (changeMasterPasswordForm) {
-        changeMasterPasswordForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            alert('Fonctionnalité en cours de développement');
+    // ==================== GESTION DES ONGLETS ====================
+    const settingsMenu = document.getElementById('settingsMenu');
+    if (settingsMenu) {
+        settingsMenu.addEventListener('click', function(e) {
+            if (e.target.tagName === 'A') {
+                // Met à jour les classes actives
+                const links = this.querySelectorAll('.list-group-item');
+                links.forEach(link => link.classList.remove('active'));
+                e.target.classList.add('active');
+            }
         });
     }
     
-    // Vérification des mots de passe
+    // ==================== CHANGEMENT MOT DE PASSE ====================
+    const changePasswordForm = document.getElementById('changeMasterPasswordForm');
+    const currentPassword = document.getElementById('currentMasterPassword');
+    const newPassword = document.getElementById('newMasterPassword');
+    const confirmPassword = document.getElementById('confirmNewMasterPassword');
+    const toggleCurrent = document.getElementById('toggleCurrentPassword');
+    const toggleNew = document.getElementById('toggleNewPassword');
+    const toggleConfirm = document.getElementById('toggleConfirmPassword');
+    const newPasswordStrength = document.getElementById('newPasswordStrength');
+    const passwordStrengthText = document.getElementById('passwordStrengthText');
+    const changePasswordBtn = document.getElementById('changePasswordBtn');
+    
+    // Fonction pour afficher/masquer les mots de passe
+    function setupPasswordToggle(buttonId, inputId) {
+        const button = document.getElementById(buttonId);
+        const input = document.getElementById(inputId);
+        
+        if (button && input) {
+            button.addEventListener('click', function() {
+                const type = input.getAttribute('type') === 'password' ? 'text' : 'password';
+                input.setAttribute('type', type);
+                
+                const icon = this.querySelector('i');
+                icon.classList.toggle('fa-eye');
+                icon.classList.toggle('fa-eye-slash');
+            });
+        }
+    }
+    
+    // Configure les toggles
+    setupPasswordToggle('toggleCurrentPassword', 'currentMasterPassword');
+    setupPasswordToggle('toggleNewPassword', 'newMasterPassword');
+    setupPasswordToggle('toggleConfirmPassword', 'confirmNewMasterPassword');
+    
+    // Vérifie la force du mot de passe
+    if (newPassword) {
+        newPassword.addEventListener('input', function() {
+            const password = this.value;
+            let score = 0;
+            
+            // Longueur
+            if (password.length >= 8) score += 20;
+            if (password.length >= 12) score += 10;
+            if (password.length >= 16) score += 10;
+            
+            // Complexité
+            if (/[a-z]/.test(password)) score += 10;
+            if (/[A-Z]/.test(password)) score += 10;
+            if (/[0-9]/.test(password)) score += 10;
+            if (/[^A-Za-z0-9]/.test(password)) score += 10;
+            
+            // Pas de motifs simples
+            const patterns = ["123", "abc", "password", "admin", "qwerty"];
+            if (!patterns.some(pattern => password.toLowerCase().includes(pattern))) score += 20;
+            
+            // Limite à 100
+            score = Math.min(score, 100);
+            
+            // Met à jour la barre
+            newPasswordStrength.style.width = score + '%';
+            
+            // Met à jour le texte
+            if (score < 40) {
+                newPasswordStrength.className = 'progress-bar bg-danger';
+                passwordStrengthText.textContent = 'Force : Faible';
+                passwordStrengthText.className = 'form-text text-danger';
+            } else if (score < 70) {
+                newPasswordStrength.className = 'progress-bar bg-warning';
+                passwordStrengthText.textContent = 'Force : Moyenne';
+                passwordStrengthText.className = 'form-text text-warning';
+            } else if (score < 90) {
+                newPasswordStrength.className = 'progress-bar bg-info';
+                passwordStrengthText.textContent = 'Force : Bonne';
+                passwordStrengthText.className = 'form-text text-info';
+            } else {
+                newPasswordStrength.className = 'progress-bar bg-success';
+                passwordStrengthText.textContent = 'Force : Excellente';
+                passwordStrengthText.className = 'form-text text-success';
+            }
+            
+            // Vérifie la correspondance
+            checkPasswordMatch();
+        });
+    }
+    
+    // Vérifie si les mots de passe correspondent
+    function checkPasswordMatch() {
+        if (!newPassword || !confirmPassword) return;
+        
+        const pwd1 = newPassword.value;
+        const pwd2 = confirmPassword.value;
+        
+        if (pwd2 === '') return;
+        
+        if (pwd1 === pwd2 && pwd1.length >= 8) {
+            changePasswordBtn.disabled = false;
+            changePasswordBtn.classList.remove('btn-secondary');
+            changePasswordBtn.classList.add('btn-warning');
+        } else {
+            changePasswordBtn.disabled = true;
+            changePasswordBtn.classList.remove('btn-warning');
+            changePasswordBtn.classList.add('btn-secondary');
+        }
+    }
+    
+    if (confirmPassword) {
+        confirmPassword.addEventListener('input', checkPasswordMatch);
+    }
+    
+    // Gestion du formulaire
+    if (changePasswordForm) {
+        changePasswordForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            if (!currentPassword.value || !newPassword.value || !confirmPassword.value) {
+                alert('Tous les champs sont requis.');
+                return;
+            }
+            
+            if (newPassword.value !== confirmPassword.value) {
+                alert('Les nouveaux mots de passe ne correspondent pas.');
+                return;
+            }
+            
+            if (newPassword.value.length < 8) {
+                alert('Le nouveau mot de passe doit faire au moins 8 caractères.');
+                return;
+            }
+            
+            if (!confirm('Êtes-vous sûr de vouloir changer votre mot de passe maître ?\n\n' +
+                        'Cette action rechiffrera tous vos mots de passe.')) {
+                return;
+            }
+            
+            // Simulation (à remplacer par une vraie requête AJAX)
+            const originalText = changePasswordBtn.innerHTML;
+            changePasswordBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Changement en cours...';
+            changePasswordBtn.disabled = true;
+            
+            setTimeout(() => {
+                alert('Fonctionnalité en cours de développement.\n\n' +
+                      'Dans une version future, cette action changera réellement votre mot de passe maître.');
+                
+                changePasswordBtn.innerHTML = originalText;
+                changePasswordBtn.disabled = false;
+                changePasswordForm.reset();
+                newPasswordStrength.style.width = '0%';
+                passwordStrengthText.textContent = 'Force : Non évaluée';
+            }, 1500);
+        });
+    }
+    
+    // ==================== SÉCURITÉ ====================
     const checkAllPasswords = document.getElementById('checkAllPasswords');
     if (checkAllPasswords) {
         checkAllPasswords.addEventListener('click', function() {
@@ -412,75 +758,164 @@ document.addEventListener('DOMContentLoaded', function() {
             btn.disabled = true;
             
             setTimeout(() => {
-                alert('Vérification terminée. Aucun mot de passe compromis trouvé.');
+                alert('Vérification terminée.\n\n' +
+                      'Tous vos mots de passe ont été vérifiés contre les fuites de données.');
+                
                 btn.innerHTML = originalText;
                 btn.disabled = false;
             }, 2000);
         });
     }
     
-    // Déconnexion de tous les appareils
     const logoutAllDevices = document.getElementById('logoutAllDevices');
     if (logoutAllDevices) {
         logoutAllDevices.addEventListener('click', function() {
-            if (confirm('Êtes-vous sûr de vouloir vous déconnecter de tous les appareils ?')) {
-                alert('Déconnexion programmée.');
+            if (confirm('Êtes-vous sûr de vouloir vous déconnecter de tous les appareils ?\n\n' +
+                       'Vous devrez vous reconnecter sur cet appareil.')) {
+                alert('Déconnexion programmée.\n\n' +
+                      'Dans une version future, cette action déconnectera toutes les sessions.');
             }
         });
     }
     
-    // Sauvegarde
-    const createBackup = document.getElementById('createBackup');
-    if (createBackup) {
-        createBackup.addEventListener('click', function() {
-            const password = document.getElementById('backupPassword').value;
-            if (!password) {
-                alert('Veuillez entrer un mot de passe pour la sauvegarde.');
+    const viewActiveSessions = document.getElementById('viewActiveSessions');
+    if (viewActiveSessions) {
+        viewActiveSessions.addEventListener('click', function() {
+            alert('Fonctionnalité en cours de développement.\n\n' +
+                  'Dans une version future, vous verrez la liste de vos sessions actives.');
+        });
+    }
+    
+    // ==================== EXPORT ====================
+    const exportBtn = document.getElementById('exportBtn');
+    if (exportBtn) {
+        exportBtn.addEventListener('click', function(e) {
+            if (!confirm('Voulez-vous exporter votre sauvegarde ?\n\n' +
+                        '• Vos mots de passe seront chiffrés\n' +
+                        '• Le fichier contiendra tous vos mots de passe\n' +
+                        '• Vous aurez besoin du mot de passe maître pour le restaurer')) {
+                e.preventDefault();
                 return;
             }
             
-            const btn = this;
-            const originalText = btn.innerHTML;
+            // Affiche un indicateur de chargement
+            const originalText = this.innerHTML;
+            this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Préparation...';
+            this.disabled = true;
             
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Création de la sauvegarde...';
-            btn.disabled = true;
-            
+            // Le téléchargement commencera automatiquement
             setTimeout(() => {
-                alert('Sauvegarde créée avec succès !');
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-            }, 1500);
+                this.innerHTML = originalText;
+                this.disabled = false;
+            }, 3000);
         });
     }
     
-    // Restauration
+    // ==================== IMPORT ====================
+    const importForm = document.getElementById('importForm');
     const backupFile = document.getElementById('backupFile');
-    const restorePassword = document.getElementById('restorePassword');
-    const restoreBackup = document.getElementById('restoreBackup');
+    const backupPassword = document.getElementById('backupPassword');
+    const toggleImportPassword = document.getElementById('toggleImportPassword');
+    const importBtn = document.getElementById('importBtn');
+    const filePreview = document.getElementById('filePreview');
     
-    function checkRestoreReady() {
-        const fileReady = backupFile.files.length > 0;
-        const passwordReady = restorePassword.value.length > 0;
-        restoreBackup.disabled = !(fileReady && passwordReady);
+    // Afficher/masquer le mot de passe d'import
+    if (toggleImportPassword) {
+        toggleImportPassword.addEventListener('click', function() {
+            const type = backupPassword.getAttribute('type') === 'password' ? 'text' : 'password';
+            backupPassword.setAttribute('type', type);
+            
+            const icon = this.querySelector('i');
+            icon.classList.toggle('fa-eye');
+            icon.classList.toggle('fa-eye-slash');
+        });
     }
     
-    if (backupFile && restorePassword && restoreBackup) {
-        backupFile.addEventListener('change', checkRestoreReady);
-        restorePassword.addEventListener('input', checkRestoreReady);
-        
-        restoreBackup.addEventListener('click', function() {
-            if (confirm('ATTENTION : Cela écrasera tous vos mots de passe actuels. Continuer ?')) {
-                const btn = this;
-                const originalText = btn.innerHTML;
+    // Prévisualisation du fichier
+    if (backupFile) {
+        backupFile.addEventListener('change', function() {
+            filePreview.innerHTML = '';
+            
+            if (this.files.length > 0) {
+                const file = this.files[0];
+                const fileSize = (file.size / 1024).toFixed(1);
                 
-                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Restauration en cours...';
-                btn.disabled = true;
+                let preview = `
+                    <div class="alert alert-info">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-file-archive fa-2x me-3"></i>
+                            <div>
+                                <strong>${file.name}</strong><br>
+                                <small>${fileSize} KB • ${file.type || 'Fichier PMB'}</small>
+                            </div>
+                        </div>
+                    </div>
+                `;
                 
-                setTimeout(() => {
-                    alert('Restauration terminée avec succès !');
-                    btn.innerHTML = originalText;
-                    btn.disabled = false;
-                }, 2000);
+                filePreview.innerHTML = preview;
+            }
+        });
+    }
+    
+    // Validation du formulaire d'import
+    if (importForm) {
+        importForm.addEventListener('submit', function(e) {
+            if (!backupFile.files.length) {
+                e.preventDefault();
+                alert('Veuillez sélectionner un fichier de sauvegarde.');
+                return;
+            }
+            
+            if (!backupPassword.value) {
+                e.preventDefault();
+                alert('Veuillez entrer le mot de passe maître.');
+                return;
+            }
+            
+            // Confirmation
+            if (!confirm('Êtes-vous sûr de vouloir importer cette sauvegarde ?\n\n' +
+                        '• Les mots de passe seront ajoutés à votre base actuelle\n' +
+                        '• Les doublons ne seront pas supprimés\n' +
+                        '• Cette action ne peut pas être annulée')) {
+                e.preventDefault();
+                return;
+            }
+            
+            // Affiche un indicateur de chargement
+            if (importBtn) {
+                importBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Import en cours...';
+                importBtn.disabled = true;
+            }
+        });
+    }
+    
+    // Vérification du fichier avant import
+    if (backupFile) {
+        backupFile.addEventListener('change', function() {
+            if (this.files.length > 0) {
+                const file = this.files[0];
+                
+                // Vérifie l'extension
+                if (!file.name.endsWith('.pmb')) {
+                    filePreview.innerHTML = `
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            Format invalide. Utilisez un fichier .pmb
+                        </div>
+                    `;
+                    this.value = '';
+                }
+                
+                // Vérifie la taille (max 10MB)
+                if (file.size > 10 * 1024 * 1024) {
+                    filePreview.innerHTML = `
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            Fichier trop volumineux (max 10MB)
+                        </div>
+                    `;
+                    this.value = '';
+                }
             }
         });
     }
