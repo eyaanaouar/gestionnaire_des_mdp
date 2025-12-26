@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Password Manager Web - Interface Web Complète
+Password Manager Web - Interface Web Complète avec Authentification à Double Facteur (2FA)
 """
 
 import os
@@ -11,7 +11,7 @@ import sqlite3
 import hashlib
 import json
 import base64
-from datetime import datetime
+from datetime import datetime, timedelta
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
@@ -19,6 +19,9 @@ import requests
 import random
 import string
 import io
+import smtplib
+import ssl
+from email.message import EmailMessage
 
 # ==================== CONFIGURATION ====================
 
@@ -28,39 +31,58 @@ TEMPLATE_DIR = os.path.join(BASE_DIR, 'templates')
 STATIC_DIR = os.path.join(BASE_DIR, 'static')
 DATA_DIR = os.path.join(BASE_DIR, 'data')
 
-print("=" * 50)
-print("🔧 CONFIGURATION FLASK")
-print("=" * 50)
-print(f"📁 Dossier actuel: {BASE_DIR}")
-print(f"📁 Templates: {TEMPLATE_DIR}")
-print(f"📁 Static: {STATIC_DIR}")
-print(f"📁 Data: {DATA_DIR}")
-
 # Créer les dossiers si nécessaire
 os.makedirs(TEMPLATE_DIR, exist_ok=True)
 os.makedirs(STATIC_DIR, exist_ok=True)
 os.makedirs(DATA_DIR, exist_ok=True)
 
-# Vérifier l'existence des dossiers
-print(f"✅ Templates existe: {os.path.exists(TEMPLATE_DIR)}")
-print(f"✅ Static existe: {os.path.exists(STATIC_DIR)}")
-print(f"✅ Data existe: {os.path.exists(DATA_DIR)}")
-
-# Configuration de l'application Flask
-app = Flask(__name__, 
-            template_folder=TEMPLATE_DIR,
-            static_folder=STATIC_DIR)
-
-app.secret_key = 'password-manager-secret-key-2024'  # À changer en production
-app.config['SESSION_TYPE'] = 'filesystem'
-app.config['SESSION_PERMANENT'] = False
-app.config['PERMANENT_SESSION_LIFETIME'] = 3600  # 1 heure
-
-# Initialiser la session
-Session(app)
-
 # Chemin de la base de données
 DB_PATH = os.path.join(DATA_DIR, 'passwords.db')
+
+# --- Configuration SMTP pour l'envoi d'emails (À CONFIGURER PAR L'UTILISATEUR) ---
+# NOTE: Remplacez ces valeurs par les vôtres. Pour Gmail, vous aurez besoin d'un mot de passe d'application.
+MAIL_SERVER = 'smtp.gmail.com'
+MAIL_PORT = 587
+SENDER_EMAIL = 'naouareya12@gmail.com' # L'email qui envoie le code
+MAIL_PASSWORD = 'drgkrufhhvpnltud' # Le mot de passe d'application ou mot de passe SMTP
+
+# ==================== FONCTIONS UTILITAIRES ====================
+
+def send_email_2fa(recipient_email, code):
+    """Envoie le code 2FA à l'adresse email du destinataire."""
+
+    if SENDER_EMAIL == 'votre_email_expediteur@gmail.com':
+        print(f"ATTENTION: Configuration SMTP non complétée. Code 2FA simulé: {code} pour {recipient_email}")
+        return True # Simuler le succès si non configuré
+
+    msg = EmailMessage()
+    msg['Subject'] = 'Votre code de vérification en deux étapes'
+    msg['From'] = SENDER_EMAIL
+    msg['To'] = recipient_email
+    
+    body = f"""
+Bonjour,
+
+Votre code de vérification en deux étapes est :
+
+{code}
+
+Ce code est valide pour 5 minutes.
+
+Si vous n'avez pas tenté de vous connecter, veuillez ignorer cet email.
+"""
+    msg.set_content(body)
+
+    context = ssl.create_default_context()
+    try:
+        with smtplib.SMTP(MAIL_SERVER, MAIL_PORT) as server:
+            server.starttls(context=context)
+            server.login(SENDER_EMAIL, MAIL_PASSWORD)
+            server.send_message(msg)
+        return True
+    except Exception as e:
+        print(f"Erreur lors de l'envoi de l'email à {recipient_email}: {e}")
+        return False
 
 # ==================== CLASSES ====================
 
@@ -70,17 +92,18 @@ class PasswordManager:
     
     def init_db(self):
         """Initialise la base de données SQLite."""
-        print(f"\n📦 Initialisation de la base de données: {DB_PATH}")
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         
-        # Table des utilisateurs
+        # Table des utilisateurs (avec colonnes 2FA)
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 username TEXT UNIQUE NOT NULL,
                 master_key BLOB NOT NULL,
                 salt BLOB NOT NULL,
+                two_factor_code TEXT,
+                two_factor_expiry TIMESTAMP,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
@@ -104,9 +127,20 @@ class PasswordManager:
             )
         ''')
         
+        # Table des sessions (ajoutée par app2.py)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS sessions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                session_token TEXT UNIQUE NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                expires_at TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users (id)
+            )
+        ''')
+        
         conn.commit()
         conn.close()
-        print("✅ Base de données initialisée")
     
     def create_user(self, username, master_password):
         """Crée un nouvel utilisateur."""
@@ -133,10 +167,13 @@ class PasswordManager:
             )
             user_id = cursor.lastrowid
             conn.commit()
-            print(f"✅ Utilisateur créé: {username} (ID: {user_id})")
+            
+            # Créer un répertoire utilisateur pour les clés (logique de app2.py)
+            user_dir = os.path.join(DATA_DIR, f"user_{user_id}")
+            os.makedirs(user_dir, exist_ok=True)
+            
             return user_id
         except sqlite3.IntegrityError:
-            print(f"❌ Utilisateur existe déjà: {username}")
             return None
         finally:
             conn.close()
@@ -154,7 +191,6 @@ class PasswordManager:
         conn.close()
         
         if not user:
-            print(f"❌ Utilisateur non trouvé: {username}")
             return None
         
         user_id, stored_key, salt = user
@@ -169,11 +205,61 @@ class PasswordManager:
         test_key = base64.urlsafe_b64encode(kdf.derive(master_password.encode()))
         
         if test_key == stored_key:
-            print(f"✅ Authentification réussie pour: {username}")
             return user_id
-        else:
-            print(f"❌ Mot de passe incorrect pour: {username}")
-            return None
+        return None
+
+    def generate_2fa_code(self, user_id):
+        """Génère un code 2FA et le stocke avec une expiration de 5 minutes."""
+        code = ''.join(random.choices(string.digits, k=6))
+        expiry = (datetime.now() + timedelta(minutes=5)).strftime('%Y-%m-%d %H:%M:%S')
+        
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute(
+            'UPDATE users SET two_factor_code = ?, two_factor_expiry = ? WHERE id = ?',
+            (code, expiry, user_id)
+        )
+        conn.commit()
+        conn.close()
+        return code
+
+    def verify_2fa_code(self, user_id, code):
+        """Vérifie le code 2FA et l'expiration."""
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute(
+            'SELECT two_factor_code, two_factor_expiry, username FROM users WHERE id = ?',
+            (user_id,)
+        )
+        result = cursor.fetchone()
+        conn.close()
+
+        if not result:
+            return False, None
+
+        stored_code, expiry_str, username = result
+        
+        if stored_code is None or expiry_str is None:
+            return False, username # Pas de code en attente
+
+        expiry_time = datetime.strptime(expiry_str, '%Y-%m-%d %H:%M:%S')
+
+        if datetime.now() > expiry_time:
+            return False, username # Code expiré
+
+        if code == stored_code:
+            # Effacer le code après vérification réussie
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            cursor.execute(
+                'UPDATE users SET two_factor_code = NULL, two_factor_expiry = NULL WHERE id = ?',
+                (user_id,)
+            )
+            conn.commit()
+            conn.close()
+            return True, username
+        
+        return False, username
     
     def get_cipher(self, user_id, master_password):
         """Retourne un objet Fernet pour le chiffrement."""
@@ -263,7 +349,7 @@ class PasswordManager:
                     'updated_at': row[10]
                 }
             except Exception as e:
-                print(f"⚠️  Erreur de déchiffrement: {e}")
+                print(f"⚠  Erreur de déchiffrement: {e}")
                 return None
         return None
 
@@ -302,8 +388,10 @@ class PasswordManager:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
 
-        cursor.execute('DELETE FROM passwords WHERE id = ? AND user_id = ?',
-                      (password_id, user_id))
+        cursor.execute(
+            'DELETE FROM passwords WHERE id = ? AND user_id = ?',
+            (password_id, user_id)
+        )
 
         conn.commit()
         affected = cursor.rowcount
@@ -345,7 +433,7 @@ class PasswordManager:
                     'updated_at': row[10]
                 })
             except Exception as e:
-                print(f"⚠️  Erreur de déchiffrement: {e}")
+                print(f"⚠  Erreur de déchiffrement: {e}")
                 continue
         
         conn.close()
@@ -370,7 +458,7 @@ class PasswordManager:
                         return int(line.split(':')[1])
             return 0
         except Exception as e:
-            print(f"⚠️  Erreur vérification API: {e}")
+            print(f"⚠  Erreur vérification API: {e}")
             return 0
     
     def calculate_strength(self, password):
@@ -436,19 +524,33 @@ class PasswordManager:
         random.shuffle(password)
         return ''.join(password)
 
+# ==================== CONFIGURATION FLASK ====================
+
+# Configuration de l'application Flask
+app = Flask(__name__, 
+            template_folder=TEMPLATE_DIR,
+            static_folder=STATIC_DIR)
+
+app.secret_key = 'password-manager-secret-key-2024'  # À changer en production
+app.config['SESSION_TYPE'] = 'filesystem'
+app.config['SESSION_PERMANENT'] = False
+app.config['PERMANENT_SESSION_LIFETIME'] = 3600  # 1 heure
+
+# Initialiser la session
+Session(app)
+
 # ==================== ROUTES FLASK ====================
 
 @app.route('/')
 def index():
     """Page d'accueil."""
-    print(f"📄 Route: / (Index) - Session: {session}")
+    if 'user_id' in session:
+        return redirect(url_for('dashboard'))
     return render_template('index.html')
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    """Page de connexion."""
-    print(f"📄 Route: /login - Méthode: {request.method}")
-    
+    """Page de connexion avec 2FA."""
     if 'user_id' in session:
         return redirect(url_for('dashboard'))
     
@@ -460,21 +562,68 @@ def login():
         user_id = manager.authenticate_user(username, password)
         
         if user_id:
-            session['user_id'] = user_id
-            session['username'] = username
-            session['master_password'] = password  # Temporaire pour la session
-            flash('Connexion réussie !', 'success')
-            return redirect(url_for('dashboard'))
+            # --- Logique 2FA ---
+            # 1. Générer le code 2FA et le stocker en DB
+            code_2fa = manager.generate_2fa_code(user_id)
+            
+            # 2. Envoyer le code par email (username est considéré comme l'email)
+            if send_email_2fa(username, code_2fa):
+                # 3. Stocker les infos en session temporaire et rediriger vers la vérification 2FA
+                session['user_id_pending'] = user_id
+                session['username_pending'] = username
+                session['master_password_pending'] = password # Stocker temporairement le MP maître
+                flash('Un code de vérification a été envoyé à votre adresse email.', 'info')
+                return redirect(url_for('verify_2fa'))
+            else:
+                flash('Erreur lors de l\'envoi du code 2FA. Veuillez réessayer.', 'danger')
+                return redirect(url_for('login'))
+            # --- Fin de la logique 2FA ---
         else:
             flash('Nom d\'utilisateur ou mot de passe incorrect.', 'danger')
     
     return render_template('login.html')
 
+@app.route('/2fa-verify', methods=['GET', 'POST'])
+def verify_2fa():
+    """Page de vérification du code 2FA."""
+    # Si l'utilisateur est déjà complètement connecté, rediriger vers le dashboard
+    if 'user_id' in session:
+        return redirect(url_for('dashboard'))
+    
+    # Si aucune connexion n'est en attente, rediriger vers la page de login
+    if 'user_id_pending' not in session:
+        flash('Veuillez vous connecter d\'abord.', 'warning')
+        return redirect(url_for('login'))
+
+    if request.method == 'POST':
+        code = request.form.get('code')
+        user_id = session['user_id_pending']
+        
+        manager = PasswordManager()
+        is_valid, username = manager.verify_2fa_code(user_id, code)
+        
+        if is_valid:
+            # Authentification complète réussie
+            session['user_id'] = user_id
+            session['username'] = username
+            session['master_password'] = session['master_password_pending']
+            
+            # Nettoyer les sessions temporaires
+            session.pop('user_id_pending', None)
+            session.pop('username_pending', None)
+            session.pop('master_password_pending', None)
+            
+            flash('Vérification réussie. Bienvenue !', 'success')
+            return redirect(url_for('dashboard'))
+        else:
+            flash('Code de vérification incorrect ou expiré.', 'danger')
+            # Ne pas effacer les sessions pending pour permettre une nouvelle tentative
+            
+    return render_template('2fa_verify.html')
+
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     """Page d'inscription."""
-    print(f"📄 Route: /register - Méthode: {request.method}")
-    
     if 'user_id' in session:
         return redirect(url_for('dashboard'))
     
@@ -505,8 +654,6 @@ def register():
 @app.route('/dashboard')
 def dashboard():
     """Tableau de bord."""
-    print(f"📄 Route: /dashboard - Session: {session}")
-    
     if 'user_id' not in session:
         flash('Veuillez vous connecter.', 'warning')
         return redirect(url_for('login'))
@@ -573,6 +720,17 @@ def view_passwords():
     manager = PasswordManager()
     passwords = manager.get_passwords(session['user_id'], session.get('master_password', ''))
     
+    # Logique de recherche et de filtrage de app2.py
+    category = request.args.get('category', '')
+    if category:
+        passwords = [p for p in passwords if p['category'] == category]
+    
+    search = request.args.get('search', '')
+    if search:
+        passwords = [p for p in passwords 
+                    if search.lower() in p['service'].lower() 
+                    or search.lower() in p['username'].lower()]
+    
     return render_template('view_passwords.html', passwords=passwords)
 
 @app.route('/generator', methods=['GET', 'POST'])
@@ -602,9 +760,10 @@ def generator():
     return render_template('generator.html', 
                          generated_password=generated_password,
                          breach_check=breach_check)
+
 @app.route('/edit-password/<int:password_id>', methods=['GET', 'POST'])
 def edit_password(password_id):
-    """Modifier un mot de passe existant."""
+    """Modifier un mot de passe existant (Route de app.py)."""
     if 'user_id' not in session:
         flash('Veuillez vous connecter.', 'warning')
         return redirect(url_for('login'))
@@ -650,7 +809,7 @@ def edit_password(password_id):
 
 @app.route('/delete-password/<int:password_id>', methods=['POST'])
 def delete_password(password_id):
-    """Supprimer un mot de passe."""
+    """Supprimer un mot de passe (Route de app.py)."""
     if 'user_id' not in session:
         return jsonify({'success': False, 'error': 'Non authentifié'}), 401
 
@@ -665,7 +824,7 @@ def delete_password(password_id):
 
 @app.route('/view-password/<int:password_id>')
 def view_password(password_id):
-    """Voir les détails d'un mot de passe spécifique."""
+    """Voir les détails d'un mot de passe spécifique (Route de app.py)."""
     if 'user_id' not in session:
         flash('Veuillez vous connecter.', 'warning')
         return redirect(url_for('login'))
@@ -697,6 +856,7 @@ def api_generate():
         manager = PasswordManager()
         password = manager.generate_password(length, use_lower, use_upper, use_digits, use_symbols)
         
+        # La réponse de app.py est plus complète
         return jsonify({
             'password': password,
             'length': len(password),
@@ -721,6 +881,7 @@ def api_check():
         breach_count = manager.check_breaches(password)
         strength = manager.calculate_strength(password)
         
+        # La réponse de app.py est plus complète
         return jsonify({
             'breach_count': breach_count,
             'strength': strength,
@@ -743,7 +904,7 @@ def settings():
 
 @app.route('/export-backup', methods=['GET'])
 def export_backup():
-    """Exporte une sauvegarde chiffrée."""
+    """Exporte une sauvegarde chiffrée (Route de app.py)."""
     if 'user_id' not in session:
         flash('Veuillez vous connecter.', 'warning')
         return redirect(url_for('login'))
@@ -811,7 +972,7 @@ def export_backup():
 
 @app.route('/import-backup', methods=['POST'])
 def import_backup():
-    """Importe une sauvegarde."""
+    """Importe une sauvegarde (Route de app.py)."""
     if 'user_id' not in session:
         flash('Veuillez vous connecter.', 'warning')
         return redirect(url_for('login'))
@@ -868,13 +1029,13 @@ def import_backup():
             # Vérifie les champs requis
             if all(field in pwd_data for field in ['service', 'username', 'password']):
                 try:
-                    # Vérifie si le mot de passe existe déjà
+                    # Récupère les mots de passe existants pour vérifier les doublons
                     existing_passwords = manager.get_passwords(
                         session['user_id'], 
                         session.get('master_password', '')
                     )
                     
-                    # Vérifie les doublons
+                    # Vérifie les doublons (basé sur service et username)
                     is_duplicate = any(
                         p['service'] == pwd_data['service'] and 
                         p['username'] == pwd_data['username']
@@ -919,7 +1080,14 @@ def import_backup():
 @app.route('/logout')
 def logout():
     """Déconnexion."""
-    session.clear()
+    # Nettoyer toutes les sessions, y compris les sessions 2FA en attente
+    session.pop('user_id', None)
+    session.pop('username', None)
+    session.pop('master_password', None)
+    session.pop('user_id_pending', None)
+    session.pop('username_pending', None)
+    session.pop('master_password_pending', None)
+    
     flash('Déconnexion réussie.', 'info')
     return redirect(url_for('index'))
 
@@ -936,30 +1104,14 @@ def internal_error(e):
 # ==================== POINT D'ENTRÉE ====================
 
 if __name__ == '__main__':
-    print("\n" + "=" * 50)
-    print(" LANCEMENT DE PASSWORD MANAGER WEB")
-    print("=" * 50)
-    
-    # Vérifier les templates
-    print("\n🔍 Vérification des templates:")
-    essential_templates = ['index.html', 'base.html', 'login.html', 'register.html', 
-                          'dashboard.html', 'settings.html', 'generator.html']
-    
-    for template in essential_templates:
-        path = os.path.join(TEMPLATE_DIR, template)
-        if os.path.exists(path):
-            print(f"  ✅ {template} - OK")
-        else:
-            print(f"  ⚠️  {template} - MANQUANT (créer un fichier vide)")
-            # Crée un fichier vide si manquant
-            with open(path, 'w') as f:
-                f.write("<!-- Template {} -->".format(template))
-    
     # Initialiser la base de données
     manager = PasswordManager()
     
     # Démarrer le serveur
-    print("\n🌐 Serveur démarré sur: http://localhost:5000")
+    print("\n" + "=" * 50)
+    print(" LANCEMENT DE PASSWORD MANAGER WEB")
+    print("=" * 50)
+    print(f"🌐 Serveur démarré sur: http://localhost:5000")
     print("📊 Base de données: data/passwords.db")
     print("🔧 Mode debug: ACTIF")
     print("\nAppuyez sur Ctrl+C pour arrêter")

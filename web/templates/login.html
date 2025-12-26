@@ -5,35 +5,75 @@
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-md-6">
-        <div class="card shadow">
+        <div class="card shadow-lg border-0">
             <div class="card-body p-5">
                 <h2 class="text-center mb-4">
-                    <i class="fas fa-sign-in-alt"></i> Connexion
+                    <i class="fas fa-sign-in-alt text-primary"></i> Connexion
                 </h2>
                 
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }}">{{ message }}</div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+
                 <form method="POST" action="{{ url_for('login') }}">
-                    <div class="mb-3">
-                        <label for="username" class="form-label">Nom d'utilisateur</label>
-                        <input type="text" class="form-control" id="username" name="username" required>
+                    <div class="mb-4">
+                        <label for="username" class="form-label fw-bold">
+                            <i class="fas fa-envelope"></i> Email (Nom d'utilisateur)
+                        </label>
+                        <input type="email" class="form-control form-control-lg" 
+                               id="username" name="username" 
+                               placeholder="Votre adresse email" required autofocus>
                     </div>
                     
-                    <div class="mb-3">
-                        <label for="password" class="form-label">Mot de passe maître</label>
-                        <input type="password" class="form-control" id="password" name="password" required>
+                    <div class="mb-4">
+                        <label for="password" class="form-label fw-bold">
+                            <i class="fas fa-key"></i> Mot de passe maître
+                        </label>
+                        <div class="input-group">
+                            <input type="password" class="form-control form-control-lg" 
+                                   id="password" name="password" 
+                                   placeholder="Votre mot de passe maître" required>
+                            <button class="btn btn-outline-secondary" type="button" 
+                                    id="togglePassword">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
                     </div>
                     
                     <div class="d-grid gap-2">
-                        <button type="submit" class="btn btn-primary btn-lg">
+                        <button type="submit" class="btn btn-primary btn-lg py-3">
                             <i class="fas fa-sign-in-alt"></i> Se connecter
                         </button>
                     </div>
                 </form>
                 
                 <div class="text-center mt-4">
-                    <p>Pas de compte ? <a href="{{ url_for('register') }}">Inscrivez-vous</a></p>
+                    <p>Pas encore de compte ? 
+                        <a href="{{ url_for('register') }}" class="fw-bold">Créez-en un</a>
+                    </p>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const password = document.getElementById('password');
+    const togglePassword = document.getElementById('togglePassword');
+    
+    togglePassword.addEventListener('click', function() {
+        const type = password.getAttribute('type') === 'password' ? 'text' : 'password';
+        password.setAttribute('type', type);
+        const icon = this.querySelector('i');
+        icon.classList.toggle('fa-eye');
+        icon.classList.toggle('fa-eye-slash');
+    });
+});
+</script>
 {% endblock %}
+

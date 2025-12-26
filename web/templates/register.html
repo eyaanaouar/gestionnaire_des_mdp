@@ -15,13 +15,13 @@
                     <div class="row">
                         <div class="col-md-6 mb-4">
                             <label for="username" class="form-label fw-bold">
-                                <i class="fas fa-user"></i> Nom d'utilisateur
+                                <i class="fas fa-envelope"></i> Email (Nom d'utilisateur)
                             </label>
-                            <input type="text" class="form-control form-control-lg" 
+                            <input type="email" class="form-control form-control-lg" 
                                    id="username" name="username" 
-                                   placeholder="Choisissez un nom d'utilisateur" required>
+                                   placeholder="Votre adresse email" required>
                             <div class="form-text">
-                                Ce nom sera utilisé pour vous connecter
+                                Ce sera votre identifiant de connexion et l'adresse pour la 2FA.
                             </div>
                         </div>
                         
@@ -231,3 +231,4 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 {% endblock %}
+
