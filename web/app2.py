@@ -23,7 +23,7 @@ import smtplib
 import ssl
 from email.message import EmailMessage
 
-# ==================== CONFIGURATION ====================
+#  CONFIGURATION 
 
 # Obtient le chemin absolu du dossier actuel
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -46,14 +46,14 @@ MAIL_PORT = 587
 SENDER_EMAIL = 'naouareya12@gmail.com' # L'email qui envoie le code
 MAIL_PASSWORD = 'drgkrufhhvpnltud' # Le mot de passe d'application ou mot de passe SMTP
 
-# ==================== FONCTIONS UTILITAIRES ====================
+# FONCTIONS UTILITAIRES 
 
 def send_email_2fa(recipient_email, code):
     """Envoie le code 2FA à l'adresse email du destinataire."""
 
     if SENDER_EMAIL == 'votre_email_expediteur@gmail.com':
         print(f"ATTENTION: Configuration SMTP non complétée. Code 2FA simulé: {code} pour {recipient_email}")
-        return True # Simuler le succès si non configuré
+        return True # Simuler le succès si non configuré 
 
     msg = EmailMessage()
     msg['Subject'] = 'Votre code de vérification en deux étapes'
@@ -524,7 +524,7 @@ class PasswordManager:
         random.shuffle(password)
         return ''.join(password)
 
-# ==================== CONFIGURATION FLASK ====================
+#  CONFIGURATION FLASK 
 
 # Configuration de l'application Flask
 app = Flask(__name__, 
@@ -539,7 +539,7 @@ app.config['PERMANENT_SESSION_LIFETIME'] = 3600  # 1 heure
 # Initialiser la session
 Session(app)
 
-# ==================== ROUTES FLASK ====================
+#  ROUTES FLASK 
 
 @app.route('/')
 def index():
@@ -1091,7 +1091,7 @@ def logout():
     flash('Déconnexion réussie.', 'info')
     return redirect(url_for('index'))
 
-# ==================== GESTION DES ERREURS ====================
+#  GESTION DES ERREURS 
 
 @app.errorhandler(404)
 def page_not_found(e):
@@ -1101,7 +1101,7 @@ def page_not_found(e):
 def internal_error(e):
     return render_template('500.html'), 500
 
-# ==================== POINT D'ENTRÉE ====================
+# POINT D'ENTRÉE 
 
 if __name__ == '__main__':
     # Initialiser la base de données
@@ -1111,9 +1111,9 @@ if __name__ == '__main__':
     print("\n" + "=" * 50)
     print(" LANCEMENT DE PASSWORD MANAGER WEB")
     print("=" * 50)
-    print(f"🌐 Serveur démarré sur: http://localhost:5000")
-    print("📊 Base de données: data/passwords.db")
-    print("🔧 Mode debug: ACTIF")
+    print(f" Serveur démarré sur: http://localhost:5000")
+    print(" Base de données: data/passwords.db")
+    print(" Mode debug: ACTIF")
     print("\nAppuyez sur Ctrl+C pour arrêter")
     print("=" * 50 + "\n")
     
